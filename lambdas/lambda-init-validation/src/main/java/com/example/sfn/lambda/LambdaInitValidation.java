@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @ApplicationScoped
 @Named("lambdaInitValidation")
-public class LambdaInitValidation implements RequestHandler<Map<String, String>, Map<String, Object>> {
+public class LambdaInitValidation implements RequestHandler<Map<String, Object>, Map<String, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LambdaInitValidation.class);
 
@@ -24,17 +24,20 @@ public class LambdaInitValidation implements RequestHandler<Map<String, String>,
     boolean processarRequest;
 
     @Override
-    public Map<String, Object> handleRequest(Map<String, String> event, Context context) {
+    public Map<String, Object> handleRequest(Map<String, Object> event, Context context) {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            String businessKey = event.get("businessKey");
+            String businessKey = (String) event.get("businessKey");
             if (businessKey == null) {
                 throw new InvalidMessageException("Campos obrigatórios faltando: businessKey");
             }
 
             response.put("businessKey", businessKey);
             response.put("processarRequest", processarRequest);
+            response.put("executionId", event.get("executionId")); // importantíssimo
+            response.put("retryCount", event.getOrDefault("retryCount", 0));
+
 
             LOGGER.info("--- Processando mensagem: BusinessKey = {}", businessKey);
             LOGGER.info("--- Processando UUID mensagem: UUID = {}", UUID.randomUUID());

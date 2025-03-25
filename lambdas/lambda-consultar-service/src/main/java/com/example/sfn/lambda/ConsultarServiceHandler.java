@@ -15,6 +15,7 @@ import java.util.Map;
 public class ConsultarServiceHandler implements RequestHandler<Map<String, Object>, Map<String, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsultarServiceHandler.class);
+    private static final int MAX_RETRIES = 3;
 
     @Override
     public Map<String, Object> handleRequest(Map<String, Object> event, Context context) {
@@ -27,9 +28,13 @@ public class ConsultarServiceHandler implements RequestHandler<Map<String, Objec
             LOGGER.error("Interrupted while sleeping", e);
         }
 
+        int retryCount = (int) event.getOrDefault("retryCount", 0);
+
         Map<String, Object> response = new HashMap<>();
         response.put("businessKey", event.getOrDefault("businessKey", "default-businessKey"));
         response.put("executionId", event.getOrDefault("executionId", "default-executionId"));
+        response.put("retryCount", retryCount);
+        response.put("processarRequest", retryCount < MAX_RETRIES);
         response.putAll(event);
 
         return response;

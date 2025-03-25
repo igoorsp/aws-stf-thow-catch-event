@@ -42,14 +42,16 @@ public class LambdaSqsHandler implements RequestHandler<SQSEvent, Void> {
         for (SQSEvent.SQSMessage message : event.getRecords()) {
             try {
                 SqsMessage sqsMessage = parseMessage(message.getBody());
-                LOGGER.info("Processando mensagem: TaskToken={}, BusinessKey={}",
-                        sqsMessage.getTaskToken(), sqsMessage.getBusinessKey());
+                LOGGER.info("Processando mensagem: TaskToken={}, BusinessKey={}, RetryCount={}",
+                        sqsMessage.getTaskToken(), sqsMessage.getBusinessKey(), sqsMessage.getRetryCount());
 
-                boolean shouldReexecute = shouldReexecuteBasedOnBusinessKey(sqsMessage.getBusinessKey());
+                // Lógica para decidir se deve reexecutar baseado no retryCount
+                boolean shouldReexecute = shouldReexecute(sqsMessage);
 
                 stepFunctionsClient.sendTaskSuccess(SendTaskSuccessRequest.builder()
                         .taskToken(sqsMessage.getTaskToken())
-                        .output(String.format("{\"reexecucao\": %b}", shouldReexecute))
+                        .output(String.format("{\"reexecucao\": %b, \"retryCount\": %d}",
+                                shouldReexecute, sqsMessage.getRetryCount()))
                         .build());
 
             } catch (InvalidMessageException e) {
@@ -70,6 +72,16 @@ public class LambdaSqsHandler implements RequestHandler<SQSEvent, Void> {
                 .map(matcher -> Integer.parseInt(matcher.group(1)))
                 .map(number -> number % 2 == 0)
                 .orElse(false);
+    }
+
+    private boolean shouldReexecute(SqsMessage sqsMessage) {
+        int retryCount = sqsMessage.getRetryCount() != null ? sqsMessage.getRetryCount() : 0;
+
+        if (retryCount >= 2) {
+            LOGGER.info("Interrompendo reexecução - limite de tentativas alcançado. RetryCount: {}", retryCount);
+            return false;
+        }
+        return shouldReexecuteBasedOnBusinessKey(sqsMessage.getBusinessKey());
     }
 
     private SqsMessage parseMessage(final String messageBody) {
