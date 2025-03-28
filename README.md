@@ -1,1 +1,1 @@
-# aws-stf-thow-catch-event
+# aws-stf-throw-catch-event
